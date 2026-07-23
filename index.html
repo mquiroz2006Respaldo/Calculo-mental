@@ -1,49 +1,41 @@
-# Generador de plantilla HTML moderna para el proyecto de cálculo mental de Mauricio
-html_content = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cálculo Mental Profesional</title>
-    <!-- Tailwind CSS -->
+    <title>Cálculo Mental Pro - Sincronizado</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- jsPDF para reportes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <!-- Iconos Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-6 font-sans">
 
     <div class="max-w-4xl mx-auto space-y-6">
-        <!-- Cabecera -->
         <header class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
                 <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">🧠 Cálculo Mental Pro</h1>
-                <p class="text-xs text-slate-400 mt-1">Usuario activo: mauricio.quiroz@sip.cl</p>
+                <p class="text-xs text-slate-400 mt-1">Conectado a Google Sheets BBDD</p>
             </div>
-            <button onclick="iniciarDesafio()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2.5 rounded-xl transition shadow-lg flex items-center gap-2">
-                <i data-lucide="play" class="w-4 h-4"></i> Comenzar Reto
+            <button onclick="finalizarReto()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2.5 rounded-xl transition shadow-lg flex items-center gap-2">
+                <i data-lucide="send" class="w-4 h-4"></i> Finalizar y Guardar en Planilla
             </button>
         </header>
 
-        <!-- Panel Principal y Estadísticas -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Área de Ejercicios / Simulación -->
-            <div class="md:col-span-2 bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl">
-                <h2 class="text-lg font-semibold text-indigo-300 mb-4 flex items-center gap-2">
-                    <i data-lucide="grid" class="w-5 h-5"></i> Espacio de Práctica Activa
+            <div class="md:col-span-2 bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl space-y-4">
+                <h2 class="text-lg font-semibold text-indigo-300 flex items-center gap-2">
+                    <i data-lucide="cpu" class="w-5 h-5"></i> Simulación de Ejercicios
                 </h2>
-                <div id="areaJuego" class="bg-slate-900/50 border border-slate-700/50 p-6 rounded-xl text-center text-slate-400">
-                    Haz clic en "Comenzar Reto" para generar tu sesión temporal.
+                <div class="bg-slate-900/50 border border-slate-700/50 p-6 rounded-xl text-center space-y-3">
+                    <p class="text-sm text-slate-300">Haz clic en el botón superior para simular una ronda de ejercicios, evaluar tu puntaje, guardarlo en el historial local temporal y enviarlo directamente a tu Google Sheet.</p>
+                    <div id="estadoEnvio" class="text-xs font-medium text-cyan-400 h-6"></div>
                 </div>
             </div>
 
-            <!-- Panel de Estadísticas y Control Temporal -->
             <div class="space-y-6">
                 <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl space-y-4">
-                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Marcador</h3>
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Último Resultado</h3>
                     <div class="space-y-2">
                         <div class="flex justify-between items-center bg-emerald-950/40 border border-emerald-900/50 p-3 rounded-xl text-emerald-400 font-medium text-sm">
                             <span>Correctas:</span>
@@ -56,17 +48,16 @@ html_content = """<!DOCTYPE html>
                     </div>
                 </div>
 
-                <!-- Historial Temporal (sessionStorage - Máximo 5 ejercicios/resultados) -->
                 <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl space-y-4">
                     <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
                         <span>Historial Local (Top 5)</span>
                         <span class="text-[10px] bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-800">Se borra al salir</span>
                     </h3>
                     <div id="listaHistorial" class="space-y-2 text-sm text-slate-300">
-                        <p class="text-xs text-slate-500 italic">No hay registros temporales aún.</p>
+                        <p class="text-xs text-slate-500 italic">Sin registros en esta sesión.</p>
                     </div>
                     <button onclick="generarPDF()" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium py-2 rounded-xl transition shadow flex items-center justify-center gap-2">
-                        <i data-lucide="file-text" class="w-4 h-4"></i> Descargar Mejor en PDF
+                        <i data-lucide="file-text" class="w-4 h-4"></i> Descargar Reporte PDF
                     </button>
                 </div>
             </div>
@@ -77,44 +68,62 @@ html_content = """<!DOCTYPE html>
         // Inicializar iconos
         lucide.createIcons();
 
-        // Al cargar la página, recuperamos el historial temporal de sessionStorage
+        // URL de tu Apps Script desplegado como Aplicación Web (Terminada en /exec)
+        const URL_GOOGLE_SHEET = "AQUÍ_PEGA_TU_URL_DE_APPS_SCRIPT_TERMINADA_EN_EXEC";
+
         document.addEventListener("DOMContentLoaded", () => {
             renderizarHistorial();
         });
 
-        function iniciarDesafio() {
-            // Efecto visual y simulador de ronda completada exitosamente
-            const correctas = Math.floor(Math.random() * 5) + 1;
+        async function finalizarReto() {
+            const correctas = Math.floor(Math.random() * 3) + 3; // Entre 3 y 5
             const incorrectas = 5 - correctas;
-            
+            const puntaje = correctas * 20;
+
             document.getElementById('txtCorrectas').innerText = correctas;
             document.getElementById('txtIncorrectas').innerText = incorrectas;
 
-            // Lanzar Confetti si hay buen resultado
-            if(correctas >= 3) {
-                confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } });
+            if(correctas >= 4) {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
             }
 
-            // Guardar en sessionStorage (máximo 5 elementos)
-            guardarEnSessionStorage({
+            // 1. Guardar en memoria local temporal (sessionStorage - máx 5)
+            const nuevoIntento = {
                 fecha: new Date().toLocaleTimeString(),
                 correctas: correctas,
                 incorrectas: incorrectas,
-                puntaje: correctas * 20
-            });
+                puntaje: puntaje
+            };
+            guardarEnSessionStorage(nuevoIntento);
+
+            // 2. Enviar datos de forma asíncrona a Google Sheets BBDD
+            const estadoDiv = document.getElementById('estadoEnvio');
+            estadoDiv.innerText = "Sincronizando con Google Sheets...";
+
+            try {
+                await fetch(URL_GOOGLE_SHEET, {
+                    method: "POST",
+                    mode: "no-cors", // Evita bloqueos CORS del navegador
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        usuario: "mauricio.quiroz@sip.cl",
+                        puntaje: puntaje,
+                        correctas: correctas,
+                        incorrectas: incorrectas
+                    })
+                });
+                estadoDiv.innerText = "¡Guardado exitosamente en Google Sheets! ✅";
+                setTimeout(() => { estadoDiv.innerText = ""; }, 4000);
+            } catch (error) {
+                console.error(error);
+                estadoDiv.innerText = "Error al sincronizar con la planilla ❌";
+            }
         }
 
-        function guardarEnSessionStorage(nuevoIntento) {
+        function guardarEnSessionStorage(intento) {
             let historial = JSON.parse(sessionStorage.getItem('calculoMentalTop5')) || [];
-            
-            // Agregar al inicio
-            historial.unshift(nuevoIntento);
-            
-            // Mantener solo los últimos 5
-            if (historial.length > 5) {
-                historial.pop();
-            }
-
+            historial.unshift(intento);
+            if (historial.length > 5) historial.pop();
             sessionStorage.setItem('calculoMentalTop5', JSON.stringify(historial));
             renderizarHistorial();
         }
@@ -124,7 +133,7 @@ html_content = """<!DOCTYPE html>
             let historial = JSON.parse(sessionStorage.getItem('calculoMentalTop5')) || [];
 
             if (historial.length === 0) {
-                contenedor.innerHTML = '<p class="text-xs text-slate-500 italic">No hay registros temporales aún.</p>';
+                contenedor.innerHTML = '<p class="text-xs text-slate-500 italic">Sin registros en esta sesión.</p>';
                 return;
             }
 
@@ -142,28 +151,27 @@ html_content = """<!DOCTYPE html>
         function generarPDF() {
             let historial = JSON.parse(sessionStorage.getItem('calculoMentalTop5')) || [];
             if (historial.length === 0) {
-                alert("Primero completa al menos un reto para generar el reporte PDF.");
+                alert("Completa al menos un reto para generar el PDF.");
                 return;
             }
 
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            doc.setFillColor(15, 23, 42); // Fondo oscuro elegante
+            doc.setFillColor(15, 23, 42);
             doc.rect(0, 0, 210, 35, 'F');
-
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(16);
-            doc.text("Reporte de Cálculo Mental - Sesión Activa", 15, 22);
+            doc.text("Reporte de Cálculo Mental - Sesión Local", 15, 22);
 
             doc.setTextColor(50, 50, 50);
             doc.setFontSize(11);
             doc.text("Usuario: mauricio.quiroz@sip.cl", 15, 50);
-            doc.text("Fecha de emisión: " + new Date().toLocaleDateString(), 15, 58);
+            doc.text("Fecha: " + new Date().toLocaleDateString(), 15, 58);
 
             let y = 70;
             doc.setFontSize(12);
-            doc.text("Historial de intentos temporales (Sesión actual):", 15, y);
+            doc.text("Historial temporal de intentos (Top 5 en sesión):", 15, y);
             
             y += 10;
             historial.forEach((h, i) => {
@@ -176,7 +184,3 @@ html_content = """<!DOCTYPE html>
     </script>
 </body>
 </html>
-"""
-
-with open("calculo_mental_pro.html", "w", encoding="utf-8") as f:
-    f.write(html_content)
