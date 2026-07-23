@@ -1,0 +1,182 @@
+# Generador de plantilla HTML moderna para el proyecto de cálculo mental de Mauricio
+html_content = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cálculo Mental Profesional</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF para reportes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Iconos Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6 font-sans">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        <!-- Cabecera -->
+        <header class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">🧠 Cálculo Mental Pro</h1>
+                <p class="text-xs text-slate-400 mt-1">Usuario activo: mauricio.quiroz@sip.cl</p>
+            </div>
+            <button onclick="iniciarDesafio()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2.5 rounded-xl transition shadow-lg flex items-center gap-2">
+                <i data-lucide="play" class="w-4 h-4"></i> Comenzar Reto
+            </button>
+        </header>
+
+        <!-- Panel Principal y Estadísticas -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Área de Ejercicios / Simulación -->
+            <div class="md:col-span-2 bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl">
+                <h2 class="text-lg font-semibold text-indigo-300 mb-4 flex items-center gap-2">
+                    <i data-lucide="grid" class="w-5 h-5"></i> Espacio de Práctica Activa
+                </h2>
+                <div id="areaJuego" class="bg-slate-900/50 border border-slate-700/50 p-6 rounded-xl text-center text-slate-400">
+                    Haz clic en "Comenzar Reto" para generar tu sesión temporal.
+                </div>
+            </div>
+
+            <!-- Panel de Estadísticas y Control Temporal -->
+            <div class="space-y-6">
+                <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl space-y-4">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Marcador</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center bg-emerald-950/40 border border-emerald-900/50 p-3 rounded-xl text-emerald-400 font-medium text-sm">
+                            <span>Correctas:</span>
+                            <span id="txtCorrectas">0</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-rose-950/40 border border-rose-900/50 p-3 rounded-xl text-rose-400 font-medium text-sm">
+                            <span>Incorrectas:</span>
+                            <span id="txtIncorrectas">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historial Temporal (sessionStorage - Máximo 5 ejercicios/resultados) -->
+                <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl space-y-4">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                        <span>Historial Local (Top 5)</span>
+                        <span class="text-[10px] bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-800">Se borra al salir</span>
+                    </h3>
+                    <div id="listaHistorial" class="space-y-2 text-sm text-slate-300">
+                        <p class="text-xs text-slate-500 italic">No hay registros temporales aún.</p>
+                    </div>
+                    <button onclick="generarPDF()" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium py-2 rounded-xl transition shadow flex items-center justify-center gap-2">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> Descargar Mejor en PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inicializar iconos
+        lucide.createIcons();
+
+        // Al cargar la página, recuperamos el historial temporal de sessionStorage
+        document.addEventListener("DOMContentLoaded", () => {
+            renderizarHistorial();
+        });
+
+        function iniciarDesafio() {
+            // Efecto visual y simulador de ronda completada exitosamente
+            const correctas = Math.floor(Math.random() * 5) + 1;
+            const incorrectas = 5 - correctas;
+            
+            document.getElementById('txtCorrectas').innerText = correctas;
+            document.getElementById('txtIncorrectas').innerText = incorrectas;
+
+            // Lanzar Confetti si hay buen resultado
+            if(correctas >= 3) {
+                confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } });
+            }
+
+            // Guardar en sessionStorage (máximo 5 elementos)
+            guardarEnSessionStorage({
+                fecha: new Date().toLocaleTimeString(),
+                correctas: correctas,
+                incorrectas: incorrectas,
+                puntaje: correctas * 20
+            });
+        }
+
+        function guardarEnSessionStorage(nuevoIntento) {
+            let historial = JSON.parse(sessionStorage.getItem('calculoMentalTop5')) || [];
+            
+            // Agregar al inicio
+            historial.unshift(nuevoIntento);
+            
+            // Mantener solo los últimos 5
+            if (historial.length > 5) {
+                historial.pop();
+            }
+
+            sessionStorage.setItem('calculoMentalTop5', JSON.stringify(historial));
+            renderizarHistorial();
+        }
+
+        function renderizarHistorial() {
+            const contenedor = document.getElementById('listaHistorial');
+            let historial = JSON.parse(sessionStorage.getItem('calculoMentalTop5')) || [];
+
+            if (historial.length === 0) {
+                contenedor.innerHTML = '<p class="text-xs text-slate-500 italic">No hay registros temporales aún.</p>';
+                return;
+            }
+
+            contenedor.innerHTML = '';
+            historial.forEach((item, index) => {
+                contenedor.innerHTML += `
+                    <div class="flex justify-between items-center bg-slate-900/40 p-2.5 rounded-lg border border-slate-700/50 text-xs">
+                        <span>#${index + 1} (${item.fecha})</span>
+                        <span class="font-bold text-emerald-400">${item.puntaje} pts (${item.correctas}/5)</span>
+                    </div>
+                `;
+            });
+        }
+
+        function generarPDF() {
+            let historial = JSON.parse(sessionStorage.getItem('calculoMentalTop5')) || [];
+            if (historial.length === 0) {
+                alert("Primero completa al menos un reto para generar el reporte PDF.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFillColor(15, 23, 42); // Fondo oscuro elegante
+            doc.rect(0, 0, 210, 35, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(16);
+            doc.text("Reporte de Cálculo Mental - Sesión Activa", 15, 22);
+
+            doc.setTextColor(50, 50, 50);
+            doc.setFontSize(11);
+            doc.text("Usuario: mauricio.quiroz@sip.cl", 15, 50);
+            doc.text("Fecha de emisión: " + new Date().toLocaleDateString(), 15, 58);
+
+            let y = 70;
+            doc.setFontSize(12);
+            doc.text("Historial de intentos temporales (Sesión actual):", 15, y);
+            
+            y += 10;
+            historial.forEach((h, i) => {
+                doc.text(`Intento ${i + 1} - Hora: ${h.fecha} | Correctas: ${h.correctas}/5 | Puntaje: ${h.puntaje} pts`, 20, y);
+                y += 8;
+            });
+
+            doc.save("reporte-calculo-mental.pdf");
+        }
+    </script>
+</body>
+</html>
+"""
+
+with open("calculo_mental_pro.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
